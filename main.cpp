@@ -20,7 +20,7 @@ typedef enum
 {
     READY,      //就绪态
     RUNNING,    //运行态
-    BOLCK,      //阻塞态
+    BLOCK,      //阻塞态
     FINISH      //完成态
 } process_state;
 
@@ -54,7 +54,7 @@ void display(int time, PCB *process)
     }
     else
     {
-        printf("%24s\n", "空闲");
+        printf("%6d%24s\n", time, "空闲");
     }
 }
 
@@ -75,15 +75,43 @@ void FCFS()
 
     //初始化时间
     int time = 0;
-    for(int i = 0; i < n; i++)
-    {
-        PCB *tmp = PCB_array[i];
-        while(tmp->need_time >= tmp->cpu_time)
-        {
-            display(time, tmp);
 
+    //完成的进程数
+    int process_finsih_count = 0;
+    //一个进程开始的时间
+    int start_time = 0;
+    for(; process_finsih_count < n; time++)
+    {
+        PCB *tmp = PCB_array[process_finsih_count];
+
+        //当进程到达的时间小于当前的时间并且进程的状态为‘READY’时
+        if(tmp->process_reach_time <= time && tmp->state == READY)
+        {
+            //记录进程开始时间（基本都不是进程到达的时间）
+            start_time = time;
+            //修改进程的状态为运行
+            tmp->state = RUNNING;
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time < tmp->need_time && tmp->state == RUNNING)
+        {
+            //进程的CPU时间加1
             tmp->cpu_time ++;
-            time ++;
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time == tmp->need_time && tmp->state == RUNNING)
+        {
+            tmp->state = FINISH;
+            //结束时没有消耗时间
+            time --;
+            //完成进程数加+1
+            process_finsih_count ++;
+        }
+        else
+        {
+            display(time, NULL);
         }
     }
 }
@@ -111,17 +139,7 @@ void SPN()
 
     //初始化时间
     int time = 0;
-    for(int i = 0; i < n; i++)
-    {
-        PCB *tmp = PCB_array[i];
-        while(tmp->need_time >= tmp->cpu_time)
-        {
-            display(time, tmp);
 
-            tmp->cpu_time ++;
-            time ++;
-        }
-    }
 }
 
 //时间片轮转
@@ -134,6 +152,10 @@ void RR()
     int time = 0;
     //时间片
     int time_slice = 5;
+
+    //记录完成的进程数
+    int process_count = 0;
+
 }
 
 //菜单
@@ -165,13 +187,13 @@ void menu()
             system("cls");
     }
 
-    menu();
+    //menu();
 }
 
 int main()
 {
     #ifndef ONLINE_JUDGE
-        //freopen("in.txt", "r", stdin);
+        freopen("in.txt", "r", stdin);
         //freopen("out.txt", "w", stdout);
     #endif
 
