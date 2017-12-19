@@ -39,14 +39,8 @@ typedef struct PCB
 int n;                          //进程的个数
 PCB *PCB_array[150];            //存指向进程的指针，用于不同的进程调度算法
 
-//用于排序
-int cmp(PCB *a, PCB *b)
-{
-    return a->process_reach_time < b->process_reach_time;
-}
-
 //表头
-void tableHead()
+void table_head()
 {
     printf("%6s%5s%8s%10s%10s%10s\n", "时间", "PID", "优先级", "进入时间", "运行时间", "需要时间");
 }
@@ -54,14 +48,30 @@ void tableHead()
 //内容
 void display(int time, PCB *process)
 {
-    printf("%6d%5d%8d%10d%10d%10d\n", time, process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
+    if(process != NULL)
+    {
+        printf("%6d%5d%8d%10d%10d%10d\n", time, process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
+    }
+    else
+    {
+        printf("%24s\n", "空闲");
+    }
+}
+
+//用于先到先服务排序
+int FSFC_cmp(PCB *a, PCB *b)
+{
+    return a->process_reach_time < b->process_reach_time;
 }
 
 //先来先服务
 void FCFS()
 {
     //显示表头
-    tableHead();
+    table_head();
+
+    //按照进程进入时间进行排序
+    sort(PCB_array, PCB_array + n, FSFC_cmp);
 
     //初始化时间
     int time = 0;
@@ -78,11 +88,61 @@ void FCFS()
     }
 }
 
+int SPN_tmp(PCB *a, PCB *b)
+{
+    if(a->process_reach_time != a->process_reach_time)
+    {
+        return a->process_reach_time < b->process_reach_time;
+    }
+    else
+    {
+        return a->need_time < b->need_time;
+    }
+}
+
+//短进程优先
+void SPN()
+{
+    //显示表头
+    table_head();
+
+    //按照进程进入时间和进程执行的时间长短进行排序
+    sort(PCB_array, PCB_array + n, SPN_tmp);
+
+    //初始化时间
+    int time = 0;
+    for(int i = 0; i < n; i++)
+    {
+        PCB *tmp = PCB_array[i];
+        while(tmp->need_time >= tmp->cpu_time)
+        {
+            display(time, tmp);
+
+            tmp->cpu_time ++;
+            time ++;
+        }
+    }
+}
+
+//时间片轮转
+void RR()
+{
+    //显示表头
+    table_head();
+
+    //初始化时间
+    int time = 0;
+    //时间片
+    int time_slice = 5;
+}
+
 //菜单
 void menu()
 {
     printf("选择调度算法：\n");
-    printf("\t1.FCFS\n");
+    printf("\t1.先来先服务\n");
+    printf("\t2.短进程优先\n");
+    printf("\t3.时间片轮换\n");
 
     int cas;
     scanf("%d", &cas);
@@ -91,21 +151,27 @@ void menu()
         case 1:
             FCFS();
             break;
-        case 2:
 
+        case 2:
+            SPN();
             break;
+
+        case 3:
+            RR();
+            break;
+
         default:
             printf("输入错误！\n");
             system("cls");
     }
 
-    //menu();
+    menu();
 }
 
 int main()
 {
     #ifndef ONLINE_JUDGE
-        freopen("in.txt", "r", stdin);
+        //freopen("in.txt", "r", stdin);
         //freopen("out.txt", "w", stdout);
     #endif
 
@@ -135,9 +201,6 @@ int main()
 
         //printf("%d, %d\n", tmp->PID, tmp->priority);
     }
-
-    //按照进程进入时间进行排序
-    sort(PCB_array, PCB_array + n, cmp);
 
     for(int i = 0; i < n; i++)
     {
