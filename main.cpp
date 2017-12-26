@@ -50,11 +50,11 @@ void display(int time, PCB *process)
 {
     if(process != NULL)
     {
-        printf("%6d%5d%8d%10d%10d%10d\n", time, process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
+        printf("%5d%5d%7d%8d%10d%10d\n", time, process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
     }
     else
     {
-        printf("%6d%24s\n", time, "空闲");
+        printf("%5d%24s\n", time, "（空闲）");
     }
 }
 
@@ -79,7 +79,7 @@ void FCFS()
     //完成的进程数
     int process_finsih_count = 0;
     //一个进程开始的时间
-    int start_time = 0;
+    //int start_time = 0;
     for(; process_finsih_count < n; time++)
     {
         PCB *tmp = PCB_array[process_finsih_count];
@@ -88,7 +88,7 @@ void FCFS()
         if(tmp->process_reach_time <= time && tmp->state == READY)
         {
             //记录进程开始时间（基本都不是进程到达的时间）
-            start_time = time;
+            //start_time = time;
             //修改进程的状态为运行
             tmp->state = RUNNING;
 
@@ -116,30 +116,170 @@ void FCFS()
     }
 }
 
-int SPN_tmp(PCB *a, PCB *b)
+int SPN_tmp_non_preemptive(PCB *a, PCB *b)
 {
-    if(a->process_reach_time != a->process_reach_time)
-    {
-        return a->process_reach_time < b->process_reach_time;
-    }
-    else
-    {
-        return a->need_time < b->need_time;
-    }
+    return a->need_time < b->need_time;
 }
 
-//短进程优先
-void SPN()
+//短进程优先（非抢占）
+void SPN_non_preemptive()
 {
     //显示表头
     table_head();
 
-    //按照进程进入时间和进程执行的时间长短进行排序
-    sort(PCB_array, PCB_array + n, SPN_tmp);
+    //按照进程进入时间进行排序
+    sort(PCB_array, PCB_array + n, FSFC_cmp);
 
     //初始化时间
     int time = 0;
+    //已进入的进程个数
+    int reach_process_num = 0;
+    //完成的进程数
+    int process_finsih_count = 0;
+    //有进程开始执行标志
+    int startFlag = 0;
 
+    for(; process_finsih_count < n; time++)
+    {
+        PCB *tmp = PCB_array[process_finsih_count];
+
+        //当进程到达的时间小于当前的时间并且进程的状态为‘READY’时
+        if(tmp->process_reach_time <= time && tmp->state == READY)
+        {
+            //修改进程的状态为运行
+            tmp->state = RUNNING;
+
+            if(!startFlag)
+            {
+                startFlag = 1;
+            }
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time < tmp->need_time && tmp->state == RUNNING)
+        {
+            //进程的CPU时间加1
+            tmp->cpu_time ++;
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time == tmp->need_time && tmp->state == RUNNING)
+        {
+            tmp->state = FINISH;
+            //结束时没有消耗时间
+            time --;
+            //完成进程数加+1
+            process_finsih_count ++;
+        }
+        else
+        {
+            display(time, NULL);
+        }
+
+        //每个时间片检查是否有新的进程进入
+        for(int i = reach_process_num; i < n; i++)
+        {
+            PCB *temp = PCB_array[i];
+
+            if(temp->process_reach_time == time)
+            {
+                reach_process_num ++;
+            }
+        }
+
+        if(process_finsih_count != n && startFlag == 1)
+        {
+            //每个时间片按照需要时间的长短对已经进入到CPU但是未完成的进程进程排序
+            /**
+                如果在当前时间片进程未完成，则process_finsih_count指向当前进程
+                否则process_finsih_count - 1指向刚已完成进程
+                process_finsih_count指向新的进程
+            **/
+            if(PCB_array[process_finsih_count]->state == READY)
+            {
+                sort(PCB_array + process_finsih_count, PCB_array + reach_process_num, SPN_tmp_non_preemptive);
+            }
+        }
+    }
+}
+
+int SPN_tmp_preemptive(PCB *a, PCB *b)
+{
+    return a->need_time < b->need_time;
+}
+
+//短进程优先（抢占）
+void SPN_preemptive()
+{
+    //显示表头
+    table_head();
+
+    //按照进程进入时间进行排序
+    sort(PCB_array, PCB_array + n, FSFC_cmp);
+
+    //初始化时间
+    int time = 0;
+    //已进入的进程个数
+    int reach_process_num = 0;
+    //完成的进程数
+    int process_finsih_count = 0;
+    //有进程开始执行标志
+    int startFlag = 0;
+
+    for(; process_finsih_count < n; time++)
+    {
+        //每个时间片检查是否有新的进程进入
+        for(int i = reach_process_num; i < n; i++)
+        {
+            PCB *temp = PCB_array[i];
+
+            if(temp->process_reach_time == time)
+            {
+                reach_process_num ++;
+            }
+        }
+
+        if(process_finsih_count != n && startFlag == 1)
+        {
+            //每个时间片按照需要时间的长短对已经进入到CPU但是未完成的进程进程排序
+            sort(PCB_array + process_finsih_count, PCB_array + reach_process_num, SPN_tmp_preemptive);
+        }
+
+        PCB *tmp = PCB_array[process_finsih_count];
+
+        //当进程到达的时间小于当前的时间并且进程的状态为‘READY’时
+        if(tmp->process_reach_time <= time && (tmp->state == READY || tmp->state == BLOCK))
+        {
+            //修改进程的状态为运行
+            tmp->state = RUNNING;
+
+            if(!startFlag)
+            {
+                startFlag = 1;
+            }
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time < tmp->need_time && tmp->state == RUNNING)
+        {
+            //进程的CPU时间加1
+            tmp->cpu_time ++;
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time == tmp->need_time && tmp->state == RUNNING)
+        {
+            tmp->state = FINISH;
+            //结束时没有消耗时间
+            time --;
+            //完成进程数加+1
+            process_finsih_count ++;
+        }
+        else
+        {
+            display(time, NULL);
+        }
+    }
 }
 
 //时间片轮转
@@ -163,8 +303,9 @@ void menu()
 {
     printf("选择调度算法：\n");
     printf("\t1.先来先服务\n");
-    printf("\t2.短进程优先\n");
-    printf("\t3.时间片轮换\n");
+    printf("\t2.短进程优先（非抢占）\n");
+    printf("\t3.短进程优先（抢占）\n");
+    printf("\t4.时间片轮换\n");
 
     int cas;
     scanf("%d", &cas);
@@ -175,10 +316,14 @@ void menu()
             break;
 
         case 2:
-            SPN();
+            SPN_non_preemptive();
             break;
 
         case 3:
+            SPN_preemptive();
+            break;
+
+        case 4:
             RR();
             break;
 
