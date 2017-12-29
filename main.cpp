@@ -288,24 +288,114 @@ void RR()
     //显示表头
     table_head();
 
+    //按照进程进入时间进行排序
+    sort(PCB_array, PCB_array + n, FSFC_cmp);
+
     //初始化时间
     int time = 0;
     //时间片
     int time_slice = 5;
+    //时间片计数
+    int time_slice_count = 0;
 
-    //记录完成的进程数
-    int process_count = 0;
+    //已进入的进程个数
+    int reach_process_num = 0;
+    //完成的进程数
+    int process_finsih_count = 0;
+    //当前运行的进程
+    int now = 0;
 
+    for(; process_finsih_count < n; time++)
+    {
+        //每个时间片检查是否有新的进程进入
+        for(int i = reach_process_num; i < n; i++)
+        {
+            PCB *temp = PCB_array[i];
+
+            if(temp->process_reach_time == time)
+            {
+                reach_process_num ++;
+            }
+            else if(temp->process_reach_time > time)
+            {
+                break;
+            }
+        }
+
+        PCB *tmp = PCB_array[now];
+
+        //当进程到达的时间小于当前的时间并且进程的状态为‘READY’时
+        if(tmp->process_reach_time <= time && (tmp->state == READY || tmp->state == BLOCK))
+        {
+            //修改进程的状态为运行
+            tmp->state = RUNNING;
+            //时间片计数
+            time_slice_count++;
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time < tmp->need_time && tmp->state == RUNNING)
+        {
+            //进程的CPU时间加1
+            tmp->cpu_time ++;
+            //时间片计数
+            time_slice_count++;
+
+            display(time, tmp);
+        }
+        else if(tmp->cpu_time == tmp->need_time && tmp->state == RUNNING)
+        {
+            tmp->state = FINISH;
+            //结束时没有消耗时间
+            time --;
+            //时间片计数赋值时间片，结束当前进程
+            time_slice_count = time_slice;
+            //完成进程数加+1
+            process_finsih_count ++;
+        }
+        else
+        {
+            display(time, NULL);
+        }
+
+
+        //如果计数等于时间片
+        if(time_slice_count == time_slice)
+        {
+            //初始化时间片计数
+            time_slice_count = 0;
+            //下一个进程
+            now = ++now % (reach_process_num);
+            //当前进程设为阻塞状态
+            tmp->state = BLOCK;
+        }
+    }
+}
+
+//显示输入线程的基本信息
+void process_infor()
+{
+    printf("%5s%8s%10s%10s%10s\n", "PID", "优先级", "进入时间", "运行时间", "需要时间");
+
+    for(int i = 0; i < n; i++)
+    {
+        PCB *process = PCB_array[i];
+        printf("%5d%7d%8d%10d%10d\n", process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
+    }
 }
 
 //菜单
 void menu()
 {
+    process_infor();
+
     printf("选择调度算法：\n");
     printf("\t1.先来先服务\n");
     printf("\t2.短进程优先（非抢占）\n");
     printf("\t3.短进程优先（抢占）\n");
     printf("\t4.时间片轮换\n");
+    printf("\t5.退出\n");
+    printf("请选择：");
 
     int cas;
     scanf("%d", &cas);
@@ -327,6 +417,9 @@ void menu()
             RR();
             break;
 
+        case 5:
+            exit(0);
+
         default:
             printf("输入错误！\n");
             system("cls");
@@ -338,7 +431,7 @@ void menu()
 int main()
 {
     #ifndef ONLINE_JUDGE
-        freopen("in.txt", "r", stdin);
+        //freopen("in.txt", "r", stdin);
         //freopen("out.txt", "w", stdout);
     #endif
 
@@ -365,13 +458,6 @@ int main()
         tmp->next = NULL;
 
         PCB_array[i] = tmp;
-
-        //printf("%d, %d\n", tmp->PID, tmp->priority);
-    }
-
-    for(int i = 0; i < n; i++)
-    {
-        printf("%d, %d\n", PCB_array[i]->PID, PCB_array[i]->process_reach_time);
     }
 
     menu();
