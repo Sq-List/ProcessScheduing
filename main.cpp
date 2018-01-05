@@ -10,6 +10,7 @@
 #include <stack>
 #include <queue>
 #include <stdlib.h>
+#include <time.h>
 #define INF 0x3f3f3f3f
 #define maxn 1000005
 #define ms(a,b) memset(a,b,sizeof(a))
@@ -384,6 +385,26 @@ void process_infor()
     }
 }
 
+int init_cmp(PCB *a, PCB *b)
+{
+    return a->PID < b->PID;
+}
+
+//初始化
+void init()
+{
+    //根据PID大小排序
+    sort(PCB_array, PCB_array + n, init_cmp);
+
+    //对每个PCB进行初始化
+    for(int i = 0; i < n; i++)
+    {
+        PCB *tmp = PCB_array[i];
+        tmp->cpu_time = 0;
+        tmp->state = READY;
+    }
+}
+
 //菜单
 void menu()
 {
@@ -425,7 +446,8 @@ void menu()
             system("cls");
     }
 
-    //menu();
+    init();
+    menu();
 }
 
 int main()
@@ -437,22 +459,38 @@ int main()
 
     printf("输入进程数：");
     scanf("%d", &n);
-    for(int i = 0;i < n; i++)
+//    for(int i = 0;i < n; i++)
+//    {
+//        PCB *tmp = (PCB*)malloc(sizeof(PCB));
+//
+//        printf("输入进程PID：");
+//        scanf("%d", &(tmp->PID));
+//
+//        printf("输入进程优先级：");
+//        scanf("%d", &(tmp->priority));
+//
+//        printf("输入进程进入时间：");
+//        scanf("%d", &(tmp->process_reach_time));
+//
+//        printf("输入进程需要运行的时间：");
+//        scanf("%d", &(tmp->need_time));
+//
+//        tmp->cpu_time = 0;
+//        tmp->state = READY;
+//        tmp->next = NULL;
+//
+//        PCB_array[i] = tmp;
+//    }
+
+    srand((unsigned)time(NULL));
+    for(int i = 0; i < n; i++)
     {
         PCB *tmp = (PCB*)malloc(sizeof(PCB));
 
-        printf("输入进程PID：");
-        scanf("%d", &(tmp->PID));
-
-        printf("输入进程优先级：");
-        scanf("%d", &(tmp->priority));
-
-        printf("输入进程进入时间：");
-        scanf("%d", &(tmp->process_reach_time));
-
-        printf("输入进程需要运行的时间：");
-        scanf("%d", &(tmp->need_time));
-
+        tmp->PID = i;
+        tmp->priority = (rand() % (100 - 1)) + 1;
+        tmp->process_reach_time = (rand() % (20 - 1)) + 1;
+        tmp->need_time = (rand() % (30 - 1)) + 1;
         tmp->cpu_time = 0;
         tmp->state = READY;
         tmp->next = NULL;
