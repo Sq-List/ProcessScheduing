@@ -59,6 +59,19 @@ void display(int time, PCB *process)
     }
 }
 
+//显示输入线程的基本信息
+void process_infor()
+{
+    printf("\n\n\n");
+    printf("%5s%8s%10s%10s%10s\n", "PID", "优先级", "进入时间", "运行时间", "需要时间");
+
+    for(int i = 0; i < n; i++)
+    {
+        PCB *process = PCB_array[i];
+        printf("%5d%7d%8d%10d%10d\n", process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
+    }
+}
+
 //用于先到先服务排序
 int FSFC_cmp(PCB *a, PCB *b)
 {
@@ -150,6 +163,7 @@ void SPN_non_preemptive()
             //修改进程的状态为运行
             tmp->state = RUNNING;
 
+            //进程开始执行标志
             if(!startFlag)
             {
                 startFlag = 1;
@@ -254,6 +268,7 @@ void SPN_preemptive()
             //修改进程的状态为运行
             tmp->state = RUNNING;
 
+            //进程开始执行标志
             if(!startFlag)
             {
                 startFlag = 1;
@@ -373,15 +388,114 @@ void RR()
     }
 }
 
-//显示输入线程的基本信息
-void process_infor()
+struct priority_cmp
 {
-    printf("%5s%8s%10s%10s%10s\n", "PID", "优先级", "进入时间", "运行时间", "需要时间");
-
-    for(int i = 0; i < n; i++)
+    bool operator()(PCB a, PCB b)
     {
-        PCB *process = PCB_array[i];
-        printf("%5d%7d%8d%10d%10d\n", process->PID, process->priority, process->process_reach_time, process->cpu_time, process->need_time);
+        return a.priority < b.priority;
+    }
+};
+
+//动态优先级
+void PRIORITY()
+{
+    //显示表头
+    table_head();
+
+    //按照进程进入时间进行排序
+    sort(PCB_array, PCB_array + n, FSFC_cmp);
+
+    //创建以priority_cmp排序优先队列
+    priority_queue<PCB, vector<PCB>, priority_cmp> pq;
+
+    //初始化时间
+    int time = 0;
+    //已进入的进程个数
+    int reach_process_num = 0;
+    //完成的进程数
+    int process_finsih_count = 0;
+
+    for(; process_finsih_count < n; time++)
+    {
+        //每个时间片检查是否有新的进程进入
+        for(int i = reach_process_num; i < n; i++)
+        {
+            PCB *temp = PCB_array[i];
+
+            if(temp->process_reach_time == time)
+            {
+                reach_process_num ++;
+                pq.push(*temp);
+            }
+            else if(temp->process_reach_time > time)
+            {
+                break;
+            }
+        }
+
+        //优先队列不为空时
+        if(!pq.empty())
+        {
+            PCB temp = pq.top();
+            PCB *tmp = &temp;
+            pq.pop();
+
+            int flag = 0;
+
+            if(tmp->state == READY)
+            {
+                tmp->state = RUNNING;
+
+                flag = 1;
+
+                display(time, tmp);
+            }
+            else if(tmp->cpu_time < tmp->need_time && tmp->state == RUNNING)
+            {
+                tmp->cpu_time ++;
+                tmp->priority = --tmp->priority >= 0 ? tmp->priority : 0;
+                flag = 2;
+
+                display(time, tmp);
+            }
+            else if(tmp->cpu_time == tmp->need_time && tmp->state == RUNNING)
+            {
+                tmp->state = FINISH;
+                //结束时没有消耗时间
+                time --;
+                //完成进程数加+1
+                process_finsih_count ++;
+            }
+
+            //如果当前进程运行，则其他的PCB的优先级自增
+            if(flag == 2)
+            {
+                queue<PCB> q;
+                while(!pq.empty())
+                {
+                    PCB tmp1 = pq.top();
+                    tmp1.priority ++;
+                    q.push(tmp1);
+                    pq.pop();
+                }
+
+                while(!q.empty())
+                {
+                    pq.push(q.front());
+                    q.pop();
+                }
+            }
+
+            if(flag)
+            {
+                //重新放入优先队列
+                pq.push(*tmp);
+            }
+        }
+        else
+        {
+            display(time, NULL);
+        }
     }
 }
 
@@ -415,7 +529,8 @@ void menu()
     printf("\t2.短进程优先（非抢占）\n");
     printf("\t3.短进程优先（抢占）\n");
     printf("\t4.时间片轮换\n");
-    printf("\t5.退出\n");
+    printf("\t5.动态优先级\n");
+    printf("\t6.退出\n");
     printf("请选择：");
 
     int cas;
@@ -439,6 +554,10 @@ void menu()
             break;
 
         case 5:
+            PRIORITY();
+            break;
+
+        case 6:
             exit(0);
 
         default:
@@ -487,9 +606,12 @@ int main()
     {
         PCB *tmp = (PCB*)malloc(sizeof(PCB));
 
-        tmp->PID = i;
-        tmp->priority = (rand() % (100 - 1)) + 1;
+        tmp->PID = i + 1;
+        //优先级在0-32
+        tmp->priority = (rand() % (32 - 0 + 1)) + 0;
+        //到达时间在1-20
         tmp->process_reach_time = (rand() % (20 - 1)) + 1;
+        //需要运行时间1-30
         tmp->need_time = (rand() % (30 - 1)) + 1;
         tmp->cpu_time = 0;
         tmp->state = READY;
@@ -499,11 +621,6 @@ int main()
     }
 
     menu();
-
-//    for(int i = 0; i < n; i++)
-//    {
-//        printf("%d\n", PCB_array[i]->PID);
-//    }
 
     return 0;
 }
