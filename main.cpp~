@@ -324,26 +324,22 @@ void RR()
 
     for(; process_finsih_count < n;)
     {
-        //当队列为空，但进程还未全部结束时，检查是否有新的进程进入
-        if(pcb_queue.empty())
+        //每个时间片检查是否有新的进程进入
+        for(int i = reach_process_num; i < n; i++)
         {
-            for(int i = reach_process_num; i < n; i++)
-            {
-                PCB *temp = PCB_array[i];
+            PCB *temp = PCB_array[i];
 
-                if(temp->process_reach_time <= time)
-                {
-                    reach_process_num ++;
-                    pcb_queue.push(temp);
-                }
-                else if(temp->process_reach_time > time)
-                {
-                    break;
-                }
+            if(temp->process_reach_time <= time)
+            {
+                reach_process_num ++;
+                pcb_queue.push(temp);
+            }
+            else if(temp->process_reach_time > time)
+            {
+                break;
             }
         }
 
-        //当队列不为空时
         if(!pcb_queue.empty())
         {
             PCB *now = pcb_queue.front();
@@ -374,22 +370,6 @@ void RR()
                     display(time, now);
                 }
 
-                //在当前进程加入队尾之前，检查是否有新的进程进入
-                for(int i = reach_process_num; i < n; i++)
-                {
-                    PCB *temp = PCB_array[i];
-
-                    if(temp->process_reach_time <= time)
-                    {
-                        reach_process_num ++;
-                        pcb_queue.push(temp);
-                    }
-                    else if(temp->process_reach_time > time)
-                    {
-                        break;
-                    }
-                }
-
                 if(now->cpu_time == now->need_time)
                 {
                     now->state = FINISH;
@@ -406,7 +386,6 @@ void RR()
         else
         {
             display(time, NULL);
-            first = 0;
             time++;
         }
     }
@@ -543,14 +522,6 @@ void init()
     }
 }
 
-void free_pcb()
-{
-    for(int i = 0; i < n; i++)
-    {
-        free(PCB_array[i]);
-    }
-}
-
 //菜单
 void menu()
 {
@@ -590,7 +561,6 @@ void menu()
             break;
 
         case 6:
-            free_pcb();
             exit(0);
 
         default:
@@ -634,30 +604,31 @@ int main()
         PCB_array[i] = tmp;
     }
 
+    /*
+srand((unsigned)time(NULL));
+    for(int i = 0; i < n; i++)
+    {
+        PCB *tmp = (PCB*)malloc(sizeof(PCB));
 
-//    srand((unsigned)time(NULL));
-//    for(int i = 0; i < n; i++)
-//    {
-//        PCB *tmp = (PCB*)malloc(sizeof(PCB));
-//
-//        tmp->PID = i + 1;
-//        //优先级在0-32
-//        tmp->priority = (rand() % (32 - 0 + 1)) + 0;
-//        //到达时间在1-20
-//        tmp->process_reach_time = (rand() % (20 - 1)) + 1;
-//        //需要运行时间1-30
-//        tmp->need_time = (rand() % (30 - 1)) + 1;
-//        tmp->cpu_time = 0;
-//        tmp->state = READY;
-//        tmp->next = NULL;
-//
-//        PCB_array[i] = tmp;
-//    }
+        tmp->PID = i + 1;
+        //优先级在0-32
+        tmp->priority = (rand() % (32 - 0 + 1)) + 0;
+        //到达时间在1-20
+        tmp->process_reach_time = (rand() % (20 - 1)) + 1;
+        //需要运行时间1-30
+        tmp->need_time = (rand() % (30 - 1)) + 1;
+        tmp->cpu_time = 0;
+        tmp->state = READY;
+        tmp->next = NULL;
+
+        PCB_array[i] = tmp;
+    }*/
 
     menu();
 
     return 0;
 }
+
 
 
 
